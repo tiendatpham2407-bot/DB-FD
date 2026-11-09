@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gavafam E-commerce Financial Dashboard (Sep 15 - Nov 07, 2026)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b',
+                        accent: '#3b82f6',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-darkbg text-slate-100 font-sans antialiased min-h-screen">
+
+    <!-- Header & Live Exchange Rate Controls -->
+    <header class="bg-cardbg border-b border-slate-800 sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-accent"></i> Gavafam P&L Command Center
+                </h1>
+                <p class="text-xs text-slate-400">Giai đoạn chuẩn: 15/09/2026 – 07/11/2026 | Dữ liệu thực tế từ Shopify, Ads (FB/GG), Fulfill (EUR) & API</p>
+            </div>
+            
+            <!-- Live Exchange Rate & Fixed Cost Inputs -->
+            <div class="flex flex-wrap items-center gap-3 bg-slate-900/60 p-2 rounded-xl border border-slate-700 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Tỷ giá SEK/USD:</label>
+                    <input type="number" id="fxSEK" value="0.095" step="0.001" class="bg-slate-800 text-white px-2 py-1 rounded w-20 text-center border border-slate-600 focus:outline-none focus:border-accent" onchange="updateDashboard()">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Tỷ giá EUR/USD:</label>
+                    <input type="number" id="fxEUR" value="1.08" step="0.01" class="bg-slate-800 text-white px-2 py-1 rounded w-20 text-center border border-slate-600 focus:outline-none focus:border-accent" onchange="updateDashboard()">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Fixed Cost (% Rev):</label>
+                    <input type="number" id="fixedCostPct" value="10" step="1" class="bg-slate-800 text-white px-2 py-1 rounded w-16 text-center border border-slate-600 focus:outline-none focus:border-accent" onchange="updateDashboard()">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+        <!-- Filters Bar -->
+        <section class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow-lg grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1"><i class="fa-solid fa-calendar mr-1"></i> Khoảng thời gian</label>
+                <select id="filterDate" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent" onchange="updateDashboard()">
+                    <option value="all">Toàn kỳ (15/09 - 07/11)</option>
+                    <option value="sep">Tháng 9 (15/09 - 30/09)</option>
+                    <option value="oct">Tháng 10 (01/10 - 31/10)</option>
+                    <option value="nov">Tháng 11 (01/11 - 07/11)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1"><i class="fa-solid fa-globe mr-1"></i> Quốc gia</label>
+                <select id="filterCountry" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent" onchange="updateDashboard()">
+                    <option value="all">Tất cả Quốc Gia</option>
+                    <option value="Sweden">Sweden (SE)</option>
+                    <option value="Norway">Norway (NO)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1"><i class="fa-solid fa-box mr-1"></i> Sản phẩm / SKU</label>
+                <select id="filterProduct" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent" onchange="updateDashboard()">
+                    <option value="all">Tất cả Sản phẩm</option>
+                    <option value="I17PBWTD8AI">I17PBWTD8AI (I Am Your Father - Star war AI)</option>
+                    <option value="I08F736D160">I08F736D160 (Pokémon Card - Card Pokemon)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-1"><i class="fa-solid fa-bullhorn mr-1"></i> Kênh Quảng Cáo</label>
+                <select id="filterChannel" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent" onchange="updateDashboard()">
+                    <option value="all">Tất cả Kênh (FB + GG)</option>
+                    <option value="fb">Facebook Ads</option>
+                    <option value="gg">Google Ads</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button onclick="resetFilters()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2 px-4 rounded-lg text-sm border border-slate-700 transition">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> Đặt lại bộ lọc
+                </button>
+            </div>
+        </section>
+
+        <!-- TẦNG 1: EXECUTIVE DAILY VIEW (KPI CARDS) -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+            <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow">
+                <div class="text-xs text-slate-400 font-medium">Tổng Doanh Thu</div>
+                <div id="kpiRevenue" class="text-2xl font-bold text-white mt-1">$0.00</div>
+                <div id="kpiRevenueSEK" class="text-xs text-emerald-400 mt-1">0 SEK (0 đơn)</div>
+            </div>
+            <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow">
+                <div class="text-xs text-slate-400 font-medium">Tổng Chi Phí Ads</div>
+                <div id="kpiAds" class="text-2xl font-bold text-rose-400 mt-1">$0.00</div>
+                <div id="kpiROAS" class="text-xs text-slate-400 mt-1">ROAS: 0.00x</div>
+            </div>
+            <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow">
+                <div class="text-xs text-slate-400 font-medium">Chi Phí Fulfill</div>
+                <div id="kpiFulfill" class="text-2xl font-bold text-amber-400 mt-1">$0.00</div>
+                <div id="kpiFulfillRatio" class="text-xs text-slate-400 mt-1">0% doanh thu</div>
+            </div>
+            <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow">
+                <div class="text-xs text-slate-400 font-medium">Chi Phí API (AI)</div>
+                <div id="kpiAPI" class="text-2xl font-bold text-cyan-400 mt-1">$716.52</div>
+                <div id="kpiAPISub" class="text-xs text-slate-400 mt-1">Theo ngày thực tế</div>
+            </div>
+            <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow">
+                <div id="kpiFixedLabel" class="text-xs text-slate-400 font-medium">Fixed Cost (10%)</div>
+                <div id="kpiFixedCost" class="text-2xl font-bold text-purple-400 mt-1">$0.00</div>
+                <div class="text-xs text-slate-400 mt-1">Trừ theo % doanh thu</div>
+            </div>
+            <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow border-l-4 border-l-emerald-500">
+                <div class="text-xs text-slate-400 font-medium">Lợi Nhuận Ròng (Net)</div>
+                <div id="kpidNetProfit" class="text-2xl font-bold text-emerald-400 mt-1">$0.00</div>
+                <div id="kpiNetMargin" class="text-xs text-emerald-400 mt-1">Margin: 0%</div>
+            </div>
+        </section>
+
+        <!-- SPOTLIGHT 2 MÃ SẢN PHẨM CHỦ LỰC (KÈM MATCHING FB ADS) -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Product 1: Star war AI -->
+            <div class="bg-gradient-to-br from-cardbg to-slate-900 p-5 rounded-2xl border border-blue-900/50 shadow-xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-wider">Top 1 Chủ Lực &bull; Ad Set: "Star war AI"</div>
+                <div class="text-xs text-blue-400 font-semibold mb-1">Mã: I17PBWTD8AI (Sweden)</div>
+                <h3 class="text-base font-bold text-white mb-3">Personlig t-shirt till pappa med motivet ”I Am Your Father”</h3>
+                <div class="grid grid-cols-4 gap-2 bg-slate-900/60 p-3 rounded-xl text-center">
+                    <div>
+                        <div class="text-[11px] text-slate-400">Doanh Thu</div>
+                        <div id="p1Rev" class="text-sm font-bold text-white mt-0.5">$0</div>
+                        <div id="p1Orders" class="text-[10px] text-emerald-400">0 đơn</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-slate-400">FB Spend (Matched)</div>
+                        <div id="p1Spend" class="text-sm font-bold text-rose-400 mt-0.5">$0</div>
+                        <div id="p1CPA" class="text-[10px] text-slate-400">CPA: $0</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-slate-400">ROAS (FB)</div>
+                        <div id="p1ROAS" class="text-sm font-bold text-amber-400 mt-0.5">0.00x</div>
+                        <div id="p1Share" class="text-[10px] text-blue-400">0% Store</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-slate-400">Doanh Thu SEK</div>
+                        <div id="p1SEK" class="text-sm font-bold text-emerald-400 mt-0.5">0 SEK</div>
+                        <div class="text-[10px] text-slate-400">5 Ad Sets</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product 2: Card Pokemon -->
+            <div class="bg-gradient-to-br from-cardbg to-slate-900 p-5 rounded-2xl border border-purple-900/50 shadow-xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 bg-purple-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-wider">Top 2 Chủ Lực &bull; Ad Set: "Card Pokemon"</div>
+                <div class="text-xs text-purple-400 font-semibold mb-1">Mã: I08F736D160 (Sweden)</div>
+                <h3 class="text-base font-bold text-white mb-3">Personligt kort för pappa - Pokémon GX Tag Team samlarkort i anime-stil</h3>
+                <div class="grid grid-cols-4 gap-2 bg-slate-900/60 p-3 rounded-xl text-center">
+                    <div>
+                        <div class="text-[11px] text-slate-400">Doanh Thu</div>
+                        <div id="p2Rev" class="text-sm font-bold text-white mt-0.5">$0</div>
+                        <div id="p2Orders" class="text-[10px] text-emerald-400">0 đơn</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-slate-400">FB Spend (Matched)</div>
+                        <div id="p2Spend" class="text-sm font-bold text-rose-400 mt-0.5">$0</div>
+                        <div id="p2CPA" class="text-[10px] text-slate-400">CPA: $0</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-slate-400">ROAS (FB)</div>
+                        <div id="p2ROAS" class="text-sm font-bold text-amber-400 mt-0.5">0.00x</div>
+                        <div id="p2Share" class="text-[10px] text-purple-400">0% Store</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-slate-400">Doanh Thu SEK</div>
+                        <div id="p2SEK" class="text-sm font-bold text-emerald-400 mt-0.5">0 SEK</div>
+                        <div class="text-[10px] text-slate-400">9 Ad Sets</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CHARTS SECTION -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-cardbg p-5 rounded-2xl border border-slate-800 shadow-xl">
+                <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-area text-accent"></i> Biểu đồ Xu hướng P&L Theo Ngày (Doanh Thu vs Chi Phí Ads vs Lợi Nhuận Ròng)
+                </h3>
+                <div class="h-80 relative">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-cardbg p-5 rounded-2xl border border-slate-800 shadow-xl">
+                <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-accent"></i> Cơ Cấu Doanh Thu Theo Quốc Gia
+                </h3>
+                <div class="h-80 relative flex items-center justify-center">
+                    <canvas id="countryChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- TẦNG 2: DEEP-DIVE ANALYTICS TABLES -->
+        <section class="bg-cardbg p-5 rounded-2xl border border-slate-800 shadow-xl space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-table text-accent"></i> Bảng Phân Tích Chi Tiết Sâu (Deep-Dive Matrix)
+                </h3>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="switchTab('products')" id="btnTabProducts" class="px-4 py-2 text-xs font-semibold rounded-lg bg-accent text-white transition">Top Sản Phẩm</button>
+                    <button onclick="switchTab('admatch')" id="btnTabAdmatch" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Matching Ads × 2 SKU</button>
+                    <button onclick="switchTab('matrix')" id="btnTabMatrix" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Quốc Gia (P&L)</button>
+                    <button onclick="switchTab('daily')" id="btnTabDaily" class="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition">Đối Soát 54 Ngày</button>
+                </div>
+            </div>
+
+            <!-- Search bar inside tables -->
+            <div class="flex justify-between items-center gap-4">
+                <input type="text" id="tableSearch" placeholder="Tìm kiếm sản phẩm, ad set, quốc gia, ngày..." class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-xs text-white w-full sm:w-80 focus:outline-none focus:border-accent" oninput="filterTable()">
+                <div class="text-xs text-slate-400" id="tableRowCount">Hiển thị dữ liệu</div>
+            </div>
+
+            <!-- Table Container -->
+            <div class="overflow-x-auto max-h-96 rounded-xl border border-slate-800">
+                <table class="w-full text-left text-xs text-slate-300" id="analysisTable">
+                    <thead class="bg-slate-900 text-slate-400 uppercase font-semibold sticky top-0">
+                        <!-- Dynamic headers -->
+                    </thead>
+                    <tbody class="divide-y divide-slate-800">
+                        <!-- Dynamic rows -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-slate-500 border-t border-slate-800 mt-12">
+        Gavafam Performance Marketing Dashboard &bull; Dữ liệu thực tế đã đối soát 100% (15/09/2026 - 07/11/2026) &bull; Deployed on GitHub Pages
+    </footer>
+
+    <!-- JavaScript Data & Logic -->
+    <script>
+        // 1. CHUỖI DỮ LIỆU 54 NGÀY THỰC TẾ (15/09/2026 - 07/11/2026) TỪ 5 FILE GỐC
+        const dailyData = [
+            {"d":"2026-09-15","se_rev":0.0,"se_ord":0,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":0.0,"p2_ord":0,"fb_se":0.12,"fb_no":0.0,"fb_p1":0.0,"fb_p2":0.0,"gg_se":5.5,"gg_no":0.27,"ful_eur":52.1668,"api_usd":0.0},
+            {"d":"2026-09-16","se_rev":986.0,"se_ord":2,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":0.0,"p2_ord":0,"fb_se":13.22,"fb_no":0.0,"fb_p1":0.0,"fb_p2":0.0,"gg_se":8.07,"gg_no":0.15,"ful_eur":0.0,"api_usd":0.0},
+            {"d":"2026-09-17","se_rev":907.31,"se_ord":1,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":0.0,"p2_ord":0,"fb_se":28.03,"fb_no":0.0,"fb_p1":0.0,"fb_p2":0.0,"gg_se":9.48,"gg_no":0.46,"ful_eur":19.8,"api_usd":0.0},
+            {"d":"2026-09-18","se_rev":460.95,"se_ord":1,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":0.0,"p2_ord":0,"fb_se":33.73,"fb_no":0.0,"fb_p1":0.0,"fb_p2":0.0,"gg_se":10.32,"gg_no":0.0,"ful_eur":18.65,"api_usd":0.3461},
+            {"d":"2026-09-19","se_rev":1516.0,"se_ord":2,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":0.0,"p2_ord":0,"fb_se":44.13,"fb_no":0.0,"fb_p1":0.0,"fb_p2":0.0,"gg_se":4.65,"gg_no":0.38,"ful_eur":9.9,"api_usd":0.5191},
+            {"d":"2026-09-20","se_rev":540.95,"se_ord":1,"no_rev":1026.0,"no_ord":2,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":0.0,"p2_ord":0,"fb_se":48.34,"fb_no":0.0,"fb_p1":0.0,"fb_p2":0.0,"gg_se":8.07,"gg_no":0.69,"ful_eur":0.0,"api_usd":0.3461},
+            {"d":"2026-09-21","se_rev":488.0,"se_ord":1,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":0.0,"p2_ord":0,"fb_se":34.94,"fb_no":0.0,"fb_p1":0.0,"fb_p2":0.0,"gg_se":9.79,"gg_no":0.17,"ful_eur":89.7303,"api_usd":1.203},
+            {"d":"2026-09-22","se_rev":0.0,"se_ord":0,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":0.0,"p2_ord":0,"fb_se":31.45,"fb_no":0.0,"fb_p1":0.0,"fb_p2":0.0,"gg_se":7.53,"gg_no":0.35,"ful_eur":9.9,"api_usd":0.173},
+            {"d":"2026-09-23","se_rev":2055.85,"se_ord":4,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":0.0,"p2_ord":0,"fb_se":31.12,"fb_no":0.0,"fb_p1":0.0,"fb_p2":0.0,"gg_se":5.22,"gg_no":1.48,"ful_eur":0.0,"api_usd":0.0},
+            {"d":"2026-09-24","se_rev":931.9,"se_ord":2,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":0.0,"p2_ord":0,"fb_se":30.79,"fb_no":0.0,"fb_p1":0.0,"fb_p2":0.0,"gg_se":7.66,"gg_no":1.22,"ful_eur":71.0219,"api_usd":0.2549},
+            {"d":"2026-09-25","se_rev":772.1,"se_ord":2,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":0.0,"p2_ord":0,"fb_se":54.59,"fb_no":0.0,"fb_p1":0.0,"fb_p2":8.16,"gg_se":11.63,"gg_no":0.92,"ful_eur":19.35,"api_usd":0.8583},
+            {"d":"2026-09-26","se_rev":1232.85,"se_ord":3,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":897.0,"p2_ord":3,"fb_se":48.55,"fb_no":0.0,"fb_p1":0.0,"fb_p2":23.72,"gg_se":5.8,"gg_no":0.31,"ful_eur":0.0,"api_usd":2.5763},
+            {"d":"2026-09-27","se_rev":3809.95,"se_ord":5,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":598.0,"p2_ord":2,"fb_se":136.59,"fb_no":0.0,"fb_p1":0.0,"fb_p2":65.57,"gg_se":29.95,"gg_no":3.72,"ful_eur":0.0,"api_usd":4.12},
+            {"d":"2026-09-28","se_rev":340.15,"se_ord":1,"no_rev":1286.0,"no_ord":1,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":254.15,"p2_ord":1,"fb_se":107.2,"fb_no":0.0,"fb_p1":0.0,"fb_p2":55.09,"gg_se":24.67,"gg_no":1.48,"ful_eur":122.1405,"api_usd":3.2616},
+            {"d":"2026-09-29","se_rev":1445.36,"se_ord":4,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":44.85,"p2_ord":1,"fb_se":86.13,"fb_no":0.0,"fb_p1":0.0,"fb_p2":62.91,"gg_se":32.95,"gg_no":2.14,"ful_eur":42.6344,"api_usd":3.943},
+            {"d":"2026-09-30","se_rev":1750.85,"se_ord":4,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":299.0,"p2_ord":1,"fb_se":29.8,"fb_no":0.0,"fb_p1":0.0,"fb_p2":18.35,"gg_se":21.38,"gg_no":0.96,"ful_eur":29.25,"api_usd":4.26},
+            {"d":"2026-10-01","se_rev":3786.8,"se_ord":7,"no_rev":857.0,"no_ord":1,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":299.0,"p2_ord":1,"fb_se":67.11,"fb_no":0.0,"fb_p1":0.0,"fb_p2":38.63,"gg_se":36.28,"gg_no":1.74,"ful_eur":54.2007,"api_usd":3.2616},
+            {"d":"2026-10-02","se_rev":5390.75,"se_ord":9,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":897.0,"p2_ord":3,"fb_se":111.32,"fb_no":0.0,"fb_p1":0.0,"fb_p2":68.47,"gg_se":37.66,"gg_no":4.12,"ful_eur":111.4865,"api_usd":5.3943},
+            {"d":"2026-10-03","se_rev":5392.7,"se_ord":9,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":897.0,"p2_ord":3,"fb_se":106.74,"fb_no":0.0,"fb_p1":0.0,"fb_p2":81.89,"gg_se":29.04,"gg_no":4.05,"ful_eur":151.27,"api_usd":6.1708},
+            {"d":"2026-10-04","se_rev":3601.85,"se_ord":8,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":2392.0,"p2_ord":7,"fb_se":153.74,"fb_no":0.0,"fb_p1":0.0,"fb_p2":117.56,"gg_se":33.95,"gg_no":5.07,"ful_eur":0.0,"api_usd":15.3431},
+            {"d":"2026-10-05","se_rev":3767.66,"se_ord":6,"no_rev":588.0,"no_ord":1,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":1106.3,"p2_ord":3,"fb_se":197.54,"fb_no":0.0,"fb_p1":0.0,"fb_p2":166.86,"gg_se":28.69,"gg_no":5.79,"ful_eur":209.13,"api_usd":34.7714},
+            {"d":"2026-10-06","se_rev":4630.45,"se_ord":11,"no_rev":528.0,"no_ord":1,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":2392.0,"p2_ord":8,"fb_se":189.54,"fb_no":0.0,"fb_p1":0.0,"fb_p2":155.31,"gg_se":63.6,"gg_no":6.2,"ful_eur":117.5515,"api_usd":31.3599},
+            {"d":"2026-10-07","se_rev":8417.11,"se_ord":17,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":3842.15,"p2_ord":11,"fb_se":194.57,"fb_no":0.0,"fb_p1":0.0,"fb_p2":133.62,"gg_se":52.07,"gg_no":6.21,"ful_eur":119.9343,"api_usd":27.9464},
+            {"d":"2026-10-08","se_rev":6096.8,"se_ord":11,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":1196.0,"p2_ord":4,"fb_se":207.61,"fb_no":2.57,"fb_p1":0.0,"fb_p2":151.75,"gg_se":72.84,"gg_no":4.72,"ful_eur":206.65,"api_usd":23.4427},
+            {"d":"2026-10-09","se_rev":7257.6,"se_ord":15,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":399.0,"p1_ord":1,"p2_rev":1914.0,"p2_ord":6,"fb_se":197.81,"fb_no":16.28,"fb_p1":0.0,"fb_p2":147.21,"gg_se":54.07,"gg_no":2.42,"ful_eur":148.55,"api_usd":16.287},
+            {"d":"2026-10-10","se_rev":3622.8,"se_ord":7,"no_rev":0.0,"no_ord":0,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":359.0,"p2_ord":1,"fb_se":197.6,"fb_no":14.08,"fb_p1":0.0,"fb_p2":152.39,"gg_se":48.98,"gg_no":4.08,"ful_eur":0.0,"api_usd":19.1837},
+            {"d":"2026-10-11","se_rev":4827.36,"se_ord":11,"no_rev":1434.0,"no_ord":3,"ot_rev":0.0,"ot_ord":0,"p1_rev":0.0,"p1_ord":0,"p2_rev":1989.15,"p2_ord":6,"fb_se":184.38,"fb_no":59.7,"fb_p1":0.0,"fb_p2":150.0,"gg_se":44.96,"gg_no":7.21,"ful_eur":0.0,"api_usd":24.2798},
+            {"d":"2026-10-12","se_rev":7200.92,"se_ord":15,"no_rev":996.0,"no_ord":2,"ot_rev":0.0,"ot_ord":0,"p1_rev":429.0,"p1_ord":1,"p2_rev":2003.31,"p2_ord":7,"fb_se":198.17,"fb_no":126.42,"fb_p1":0.0,"fb_p2":148.72,"gg_se":36.1,"gg_no":9.21,"ful_eur":382.6596,"api_usd":20.5973},
+            {"d":"2026-10-13","se_rev":9134.86,"se_ord":20,"no_rev":2192.0,"no_ord":3,"ot_rev":0.0,"ot_ord":0,"p1_rev":322.16,"p1_ord":1,"p2_rev":1555.0,"p2_ord":5,"fb_se":273.4,"fb_no":100.92,"fb_p1":23.09,"fb_p2":197.22,"gg_se":71.71,"gg_no":8.16,"ful_eur":209.5707,"api_usd":25.3634},
+            {"d":"2026-10-14","se_rev":9124.6,"se_ord":19,"no_rev":2063.0,"no_ord":3,"ot_rev":0.0,"ot_ord":0,"p1_rev":1257.0,"p1_ord":3,"p2_rev":2333.0,"p2_ord":7,"fb_se":271.63,"fb_no":135.13,"fb_p1":35.32,"fb_p2":174.69,"gg_se":66.87,"gg_no":7.05,"ful_eur":300.2826,"api_usd":18.979},
+            {"d":"2026-10-15","se_rev":10372.53,"se_ord":19,"no_rev":3966.0,"no_ord":6,"ot_rev":0.0,"ot_ord":0,"p1_rev":798.0,"p1_ord":1,"p2_rev":2408.16,"p2_ord":7,"fb_se":255.84,"fb_no":176.05,"fb_p1":36.35,"fb_p2":141.64,"gg_se":109.5,"gg_no":7.48,"ful_eur":240.9311,"api_usd":19.546},
+            {"d":"2026-10-16","se_rev":8661.8,"se_ord":19,"no_rev":4703.0,"no_ord":6,"ot_rev":0.0,"ot_ord":0,"p1_rev":1586.15,"p1_ord":4,"p2_rev":2811.0,"p2_ord":8,"fb_se":319.44,"fb_no":175.32,"fb_p1":77.8,"fb_p2":151.1,"gg_se":100.8,"gg_no":21.66,"ful_eur":323.3221,"api_usd":33.3955},
+            {"d":"2026-10-17","se_rev":7571.61,"se_ord":15,"no_rev":1777.2,"no_ord":3,"ot_rev":0.0,"ot_ord":0,"p1_rev":1646.0,"p1_ord":4,"p2_rev":957.0,"p2_ord":3,"fb_se":312.25,"fb_no":139.38,"fb_p1":76.54,"fb_p2":157.17,"gg_se":128.8,"gg_no":23.15,"ful_eur":332.3656,"api_usd":25.1572},
+            {"d":"2026-10-18","se_rev":16227.63,"se_ord":29,"no_rev":2361.0,"no_ord":4,"ot_rev":0.0,"ot_ord":0,"p1_rev":4793.66,"p1_ord":10,"p2_rev":2632.0,"p2_ord":8,"fb_se":434.78,"fb_no":226.63,"fb_p1":96.11,"fb_p2":241.72,"gg_se":159.34,"gg_no":39.56,"ful_eur":0.0,"api_usd":28.3643},
+            {"d":"2026-10-19","se_rev":7431.35,"se_ord":15,"no_rev":2698.15,"no_ord":6,"ot_rev":0.0,"ot_ord":0,"p1_rev":798.0,"p1_ord":2,"p2_rev":2632.0,"p2_ord":8,"fb_se":315.71,"fb_no":164.98,"fb_p1":91.15,"fb_p2":132.44,"gg_se":129.9,"gg_no":19.7,"ful_eur":610.8024,"api_usd":25.8668},
+            {"d":"2026-10-20","se_rev":16522.72,"se_ord":35,"no_rev":3482.0,"no_ord":6,"ot_rev":0.0,"ot_ord":0,"p1_rev":4190.11,"p1_ord":10,"p2_rev":4381.15,"p2_ord":14,"fb_se":466.59,"fb_no":225.71,"fb_p1":102.06,"fb_p2":266.81,"gg_se":152.25,"gg_no":21.68,"ful_eur":159.35,"api_usd":39.09},
+            {"d":"2026-10-21","se_rev":19099.48,"se_ord":35,"no_rev":7928.0,"no_ord":15,"ot_rev":0.0,"ot_ord":0,"p1_rev":4036.31,"p1_ord":10,"p2_rev":3290.0,"p2_ord":10,"fb_se":506.97,"fb_no":207.05,"fb_p1":112.14,"fb_p2":292.59,"gg_se":160.87,"gg_no":39.86,"ful_eur":588.7358,"api_usd":29.1018},
+            {"d":"2026-10-22","se_rev":22043.29,"se_ord":43,"no_rev":8538.15,"no_ord":17,"ot_rev":0.0,"ot_ord":1,"p1_rev":6120.66,"p1_ord":15,"p2_rev":3595.15,"p2_ord":9,"fb_se":540.34,"fb_no":361.21,"fb_p1":143.58,"fb_p2":232.3,"gg_se":121.51,"gg_no":58.95,"ful_eur":666.4946,"api_usd":23.7618},
+            {"d":"2026-10-23","se_rev":18027.56,"se_ord":36,"no_rev":5699.15,"no_ord":10,"ot_rev":0.0,"ot_ord":0,"p1_rev":5038.0,"p1_ord":12,"p2_rev":3894.15,"p2_ord":12,"fb_se":574.0,"fb_no":299.28,"fb_p1":196.68,"fb_p2":197.31,"gg_se":144.13,"gg_no":28.16,"ful_eur":744.9997,"api_usd":16.9912},
+            {"d":"2026-10-24","se_rev":18481.08,"se_ord":37,"no_rev":2293.15,"no_ord":5,"ot_rev":0.0,"ot_ord":0,"p1_rev":5184.76,"p1_ord":13,"p2_rev":4391.11,"p2_ord":13,"fb_se":609.89,"fb_no":183.59,"fb_p1":234.35,"fb_p2":224.32,"gg_se":205.04,"gg_no":42.9,"ful_eur":0.0,"api_usd":15.0572},
+            {"d":"2026-10-25","se_rev":27825.91,"se_ord":54,"no_rev":4311.6,"no_ord":8,"ot_rev":0.0,"ot_ord":0,"p1_rev":7990.0,"p1_ord":20,"p2_rev":7298.0,"p2_ord":21,"fb_se":796.99,"fb_no":56.84,"fb_p1":310.61,"fb_p2":283.93,"gg_se":250.01,"gg_no":47.43,"ful_eur":0.0,"api_usd":19.8209},
+            {"d":"2026-10-26","se_rev":19724.42,"se_ord":42,"no_rev":3526.6,"no_ord":6,"ot_rev":0.0,"ot_ord":0,"p1_rev":5955.0,"p1_ord":15,"p2_rev":4391.1,"p2_ord":13,"fb_se":583.83,"fb_no":32.05,"fb_p1":254.94,"fb_p2":206.18,"gg_se":275.26,"gg_no":33.39,"ful_eur":1691.3195,"api_usd":18.7568},
+            {"d":"2026-10-27","se_rev":33642.73,"se_ord":65,"no_rev":3690.0,"no_ord":7,"ot_rev":0.0,"ot_ord":0,"p1_rev":11232.31,"p1_ord":27,"p2_rev":4911.15,"p2_ord":13,"fb_se":748.31,"fb_no":36.35,"fb_p1":400.74,"fb_p2":119.66,"gg_se":422.25,"gg_no":57.13,"ful_eur":637.5681,"api_usd":16.8747},
+            {"d":"2026-10-28","se_rev":29101.73,"se_ord":60,"no_rev":3594.65,"no_ord":8,"ot_rev":468.0,"ot_ord":1,"p1_rev":10279.82,"p1_ord":26,"p2_rev":4130.37,"p2_ord":13,"fb_se":635.74,"fb_no":38.5,"fb_p1":349.59,"fb_p2":74.42,"gg_se":431.46,"gg_no":63.09,"ful_eur":1063.3878,"api_usd":15.5339},
+            {"d":"2026-10-29","se_rev":36901.29,"se_ord":72,"no_rev":3634.2,"no_ord":8,"ot_rev":0.0,"ot_ord":0,"p1_rev":13593.79,"p1_ord":34,"p2_rev":4336.3,"p2_ord":13,"fb_se":610.07,"fb_no":49.08,"fb_p1":297.08,"fb_p2":131.51,"gg_se":340.85,"gg_no":51.25,"ful_eur":987.5049,"api_usd":16.8601},
+            {"d":"2026-10-30","se_rev":27871.43,"se_ord":58,"no_rev":6453.65,"no_ord":12,"ot_rev":0.0,"ot_ord":0,"p1_rev":11131.63,"p1_ord":28,"p2_rev":4426.0,"p2_ord":14,"fb_se":680.04,"fb_no":41.69,"fb_p1":390.4,"fb_p2":157.25,"gg_se":358.12,"gg_no":32.72,"ful_eur":1113.1283,"api_usd":18.0004},
+            {"d":"2026-10-31","se_rev":10100.08,"se_ord":22,"no_rev":1997.95,"no_ord":4,"ot_rev":0.0,"ot_ord":0,"p1_rev":3158.11,"p1_ord":8,"p2_rev":2339.16,"p2_ord":7,"fb_se":480.12,"fb_no":32.66,"fb_p1":237.86,"fb_p2":140.0,"gg_se":253.01,"gg_no":23.54,"ful_eur":0.0,"api_usd":11.8001},
+            {"d":"2026-11-01","se_rev":20360.71,"se_ord":42,"no_rev":3286.0,"no_ord":6,"ot_rev":0.0,"ot_ord":0,"p1_rev":8963.0,"p1_ord":22,"p2_rev":2273.0,"p2_ord":7,"fb_se":174.33,"fb_no":32.65,"fb_p1":76.69,"fb_p2":22.49,"gg_se":380.99,"gg_no":38.41,"ful_eur":0.0,"api_usd":11.5385},
+            {"d":"2026-11-02","se_rev":25244.93,"se_ord":52,"no_rev":468.0,"no_ord":1,"ot_rev":0.0,"ot_ord":0,"p1_rev":8232.62,"p1_ord":21,"p2_rev":4082.15,"p2_ord":13,"fb_se":227.52,"fb_no":41.73,"fb_p1":88.59,"fb_p2":38.14,"gg_se":509.34,"gg_no":49.59,"ful_eur":1940.9163,"api_usd":12.2849},
+            {"d":"2026-11-03","se_rev":13338.43,"se_ord":29,"no_rev":1898.0,"no_ord":3,"ot_rev":0.0,"ot_ord":0,"p1_rev":3474.15,"p1_ord":10,"p2_rev":2818.15,"p2_ord":8,"fb_se":164.93,"fb_no":15.79,"fb_p1":29.48,"fb_p2":39.86,"gg_se":261.98,"gg_no":25.05,"ful_eur":663.1879,"api_usd":7.0747},
+            {"d":"2026-11-04","se_rev":6838.31,"se_ord":13,"no_rev":1682.65,"no_ord":4,"ot_rev":0.0,"ot_ord":0,"p1_rev":2722.8,"p1_ord":7,"p2_rev":359.0,"p2_ord":1,"fb_se":149.96,"fb_no":9.39,"fb_p1":24.52,"fb_p2":43.36,"gg_se":141.51,"gg_no":13.28,"ful_eur":488.9864,"api_usd":5.5606},
+            {"d":"2026-11-05","se_rev":3587.11,"se_ord":8,"no_rev":931.65,"no_ord":2,"ot_rev":0.0,"ot_ord":0,"p1_rev":868.0,"p1_ord":2,"p2_rev":1077.0,"p2_ord":3,"fb_se":125.59,"fb_no":3.95,"fb_p1":19.3,"fb_p2":33.81,"gg_se":73.2,"gg_no":11.38,"ful_eur":264.1616,"api_usd":3.5022},
+            {"d":"2026-11-06","se_rev":2182.15,"se_ord":5,"no_rev":806.0,"no_ord":2,"ot_rev":0.0,"ot_ord":0,"p1_rev":429.0,"p1_ord":1,"p2_rev":912.15,"p2_ord":3,"fb_se":77.0,"fb_no":2.68,"fb_p1":8.69,"fb_p2":20.87,"gg_se":63.64,"gg_no":5.87,"ful_eur":131.5417,"api_usd":4.1106},
+            {"d":"2026-11-07","se_rev":6143.41,"se_ord":12,"no_rev":1911.0,"no_ord":4,"ot_rev":0.0,"ot_ord":0,"p1_rev":1207.0,"p1_ord":3,"p2_rev":1226.11,"p2_ord":4,"fb_se":84.62,"fb_no":2.4,"fb_p1":4.32,"fb_p2":34.94,"gg_se":64.0,"gg_no":11.22,"ful_eur":87.8151,"api_usd":4.2275}
+        ];
+
+        // 2. DANH SÁCH SẢN PHẨM TỔNG HỢP TỪ SHOPIFY (15/09 - 07/11)
+        const rawProducts = [
+            { title: "Personlig t-shirt till pappa med motivet ”I Am Your Father”", sku: "I17PBWTD8AI", type: "Unisex T-shirt", country: "Sweden", salesSEK: 125836.04, orders: 311, fbMatchedUSD: 3717.98, keyword: "Star war AI" },
+            { title: "Personligt kort för pappa - Pokémon GX Tag Team samlarkort i anime-stil", sku: "I08F736D160", type: "Acrylic Card", country: "Sweden", salesSEK: 100839.27, orders: 305, fbMatchedUSD: 5501.94, keyword: "Card Pokemon" },
+            { title: "Unassigned / Shipping / Misc Orders (Sweden)", sku: "OTHER", type: "Service", country: "Sweden", salesSEK: 74044.00, orders: 0, fbMatchedUSD: 0, keyword: "-" },
+            { title: "Personlig T-skjorte til pappa og familie med eget line art-portrett", sku: "OTHER", type: "Unisex T-shirt", country: "Norway", salesSEK: 17484.55, orders: 44, fbMatchedUSD: 0, keyword: "-" },
+            { title: "Pappasaurie | Personlig t-shirt till pappa", sku: "OTHER", type: "Unisex T-shirt", country: "Sweden", salesSEK: 15679.01, orders: 39, fbMatchedUSD: 0, keyword: "-" },
+            { title: "Unassigned / Shipping / Misc Orders (Norway)", sku: "OTHER", type: "Service", country: "Norway", salesSEK: 13058.00, orders: 0, fbMatchedUSD: 0, keyword: "-" },
+            { title: "Fraktförsäkring (Bảo hiểm vận chuyển)", sku: "Insure01", type: "Service", country: "Sweden", salesSEK: 12697.80, orders: 562, fbMatchedUSD: 0, keyword: "-" },
+            { title: "Personalized T-shirt for Dad | I Am Your Father Dark Version", sku: "OTHER", type: "Unisex T-shirt", country: "Sweden", salesSEK: 11749.71, orders: 28, fbMatchedUSD: 0, keyword: "-" },
+            { title: "Personlig T-skjorte til Pappa og Familie – Line Art med Akvarell", sku: "OTHER", type: "Unisex T-shirt", country: "Norway", salesSEK: 11446.60, orders: 29, fbMatchedUSD: 0, keyword: "-" },
+            { title: "Personlig T-shirt – Akvarellstil", sku: "OTHER", type: "Unisex T-shirt", country: "Sweden", salesSEK: 10807.76, orders: 27, fbMatchedUSD: 0, keyword: "-" },
+            { title: "Personlig T-skjorte til pappa og familie – akvarellstil", sku: "OTHER", type: "Unisex T-shirt", country: "Norway", salesSEK: 10383.45, orders: 25, fbMatchedUSD: 0, keyword: "-" },
+            { title: "Personlig t-shirt till pappa | Pappas Fotbollslag med färg", sku: "OTHER", type: "Unisex T-shirt", country: "Sweden", salesSEK: 9178.00, orders: 22, fbMatchedUSD: 0, keyword: "-" },
+            { title: "Personlig T-shirt med eget line art-porträtt", sku: "OTHER", type: "Unisex T-shirt", country: "Sweden", salesSEK: 8389.65, orders: 21, fbMatchedUSD: 0, keyword: "-" },
+            { title: "Other Products & Variants (Sweden)", sku: "OTHER", type: "Various", country: "Sweden", salesSEK: 137570.93, orders: 618, fbMatchedUSD: 0, keyword: "-" },
+            { title: "Other Products & Variants (Norway & Finland)", sku: "OTHER", type: "Various", country: "Norway", salesSEK: 40703.15, orders: 101, fbMatchedUSD: 0, keyword: "-" }
+        ];
+
+        // 3. DANH SÁCH 14 AD SETS MATCHING VỚI 2 SẢN PHẨM CHỦ LỰC
+        const matchedAdSets = [
+            { sku: "I17PBWTD8AI", keyword: "Star war AI", adset: "FB 384b SE CBO Gift for Dad T-shirt Star war AI", spend54: 1536.38, spendAll: 1536.41, clicks: 1806 },
+            { sku: "I17PBWTD8AI", keyword: "Star war AI", adset: "FB 384b SE Gift for Dad T-shirt Star war AI bid 20", spend54: 1381.50, spendAll: 1383.00, clicks: 1760 },
+            { sku: "I17PBWTD8AI", keyword: "Star war AI", adset: "FB 384b SE CBO Gift for Dad T-shirt Star war AI v3", spend54: 644.12, spendAll: 644.17, clicks: 607 },
+            { sku: "I17PBWTD8AI", keyword: "Star war AI", adset: "FB 384b SE CBO Gift for Dad T-shirt Star war AI Image", spend54: 154.34, spendAll: 160.58, clicks: 236 },
+            { sku: "I17PBWTD8AI", keyword: "Star war AI", adset: "FB 384b SE CBO Gift for Dad T-shirt Star war AI - Dog cat", spend54: 1.64, spendAll: 1.64, clicks: 1 },
+            { sku: "I08F736D160", keyword: "Card Pokemon", adset: "FB 384b SE Gift for Dad FD Card Pokemon Video bid20", spend54: 3987.79, spendAll: 3996.12, clicks: 6114 },
+            { sku: "I08F736D160", keyword: "Card Pokemon", adset: "FB 384b SE CBO Gift for Dad Card Pokemon Video V2", spend54: 283.44, spendAll: 283.44, clicks: 626 },
+            { sku: "I08F736D160", keyword: "Card Pokemon", adset: "FB 384b SE Gift for Dad FD Card Pokemon V2 Bid 18", spend54: 276.20, spendAll: 276.20, clicks: 511 },
+            { sku: "I08F736D160", keyword: "Card Pokemon", adset: "FB 384b SE Gift for Dad FD Card Pokemon Scale", spend54: 243.50, spendAll: 243.50, clicks: 421 },
+            { sku: "I08F736D160", keyword: "Card Pokemon", adset: "FB 384b SE Gift for Dad FD Card Pokemon V3 bid20", spend54: 231.41, spendAll: 231.41, clicks: 473 },
+            { sku: "I08F736D160", keyword: "Card Pokemon", adset: "FB 384b SE CBO Gift for Dad Card Pokemon Video V1", spend54: 182.00, spendAll: 182.00, clicks: 358 },
+            { sku: "I08F736D160", keyword: "Card Pokemon", adset: "FB 384b SE CBO Gift for Dad Card Pokemon Video V3", spend54: 144.31, spendAll: 144.31, clicks: 264 },
+            { sku: "I08F736D160", keyword: "Card Pokemon", adset: "FB 384b SE Gift for Dad FD Card Pokemon bid 16", spend54: 106.58, spendAll: 106.58, clicks: 179 },
+            { sku: "I08F736D160", keyword: "Card Pokemon", adset: "FB 384b SE Gift for Dad FD Card Pokemon Scale Bid 18", spend54: 46.71, spendAll: 46.71, clicks: 69 }
+        ];
+
+        let currentTab = 'products';
+        let trendChartInstance = null;
+        let countryChartInstance = null;
+
+        function getFilteredDailyData() {
+            const filterDate = document.getElementById('filterDate').value;
+            return dailyData.filter(item => {
+                if (filterDate === 'sep') return item.d >= '2026-09-15' && item.d <= '2026-09-30';
+                if (filterDate === 'oct') return item.d >= '2026-10-01' && item.d <= '2026-10-31';
+                if (filterDate === 'nov') return item.d >= '2026-11-01' && item.d <= '2026-11-07';
+                return true;
+            });
+        }
+
+        function computeRowMetrics(item, fxSEK, fxEUR, fixedCostPct, filterCountry, filterProduct, filterChannel) {
+            const dayTotalRevSEK = item.se_rev + item.no_rev + item.ot_rev;
+            let revSEK = 0;
+            let orders = 0;
+
+            if (filterProduct === 'I17PBWTD8AI') {
+                if (filterCountry === 'all' || filterCountry === 'Sweden') {
+                    revSEK = item.p1_rev;
+                    orders = item.p1_ord;
+                }
+            } else if (filterProduct === 'I08F736D160') {
+                if (filterCountry === 'all' || filterCountry === 'Sweden') {
+                    revSEK = item.p2_rev;
+                    orders = item.p2_ord;
+                }
+            } else {
+                if (filterCountry === 'Sweden') {
+                    revSEK = item.se_rev;
+                    orders = item.se_ord;
+                } else if (filterCountry === 'Norway') {
+                    revSEK = item.no_rev;
+                    orders = item.no_ord;
+                } else {
+                    revSEK = dayTotalRevSEK;
+                    orders = item.se_ord + item.no_ord + item.ot_ord;
+                }
+            }
+
+            const revUSD = revSEK * fxSEK;
+
+            // Tính Chi phí Ads thực tế theo bộ lọc
+            let fbUSD = 0;
+            let ggUSD = 0;
+
+            if (filterProduct === 'I17PBWTD8AI') {
+                fbUSD = (filterCountry === 'Norway') ? 0 : item.fb_p1;
+                ggUSD = 0; // GG không tách theo keyword Ad Set của FB
+            } else if (filterProduct === 'I08F736D160') {
+                fbUSD = (filterCountry === 'Norway') ? 0 : item.fb_p2;
+                ggUSD = 0;
+            } else {
+                if (filterCountry === 'Sweden') {
+                    fbUSD = item.fb_se;
+                    ggUSD = item.gg_se;
+                } else if (filterCountry === 'Norway') {
+                    fbUSD = item.fb_no;
+                    ggUSD = item.gg_no;
+                } else {
+                    fbUSD = item.fb_se + item.fb_no;
+                    ggUSD = item.gg_se + item.gg_no;
+                }
+            }
+
+            if (filterChannel === 'fb') ggUSD = 0;
+            if (filterChannel === 'gg') fbUSD = 0;
+
+            const adsUSD = fbUSD + ggUSD;
+
+            // Phân bổ Fulfill và API theo tỷ trọng doanh thu trong ngày khi lọc Quốc gia / SKU
+            let revShare = 1;
+            if (filterCountry !== 'all' || filterProduct !== 'all') {
+                revShare = dayTotalRevSEK > 0 ? (revSEK / dayTotalRevSEK) : 0;
+            }
+
+            const fulUSD = item.ful_eur * fxEUR * revShare;
+            const apiUSD = item.api_usd * revShare;
+            const fixedUSD = revUSD * fixedCostPct;
+            const netUSD = revUSD - fixedUSD - adsUSD - fulUSD - apiUSD;
+
+            return {
+                d: item.d,
+                revSEK,
+                revUSD,
+                orders,
+                fbUSD,
+                ggUSD,
+                adsUSD,
+                fulUSD,
+                apiUSD,
+                fixedUSD,
+                netUSD
+            };
+        }
+
+        function updateDashboard() {
+            const fxSEK = parseFloat(document.getElementById('fxSEK').value) || 0.095;
+            const fxEUR = parseFloat(document.getElementById('fxEUR').value) || 1.08;
+            const fixedCostVal = parseFloat(document.getElementById('fixedCostPct').value);
+            const fixedCostPct = (isNaN(fixedCostVal) ? 10 : fixedCostVal) / 100;
+
+            const filterCountry = document.getElementById('filterCountry').value;
+            const filterProduct = document.getElementById('filterProduct').value;
+            const filterChannel = document.getElementById('filterChannel').value;
+
+            const filteredDays = getFilteredDailyData();
+
+            let totalSEK = 0, totalRevUSD = 0, totalOrders = 0;
+            let totalFB = 0, totalGG = 0, totalAdsUSD = 0;
+            let totalFulfillUSD = 0, totalAPIUSD = 0, totalFixedUSD = 0, totalNetUSD = 0;
+
+            // Tính riêng cho 2 thẻ Spotlight theo khoảng thời gian đang chọn
+            let p1SEK = 0, p1Ord = 0, p1FB = 0;
+            let p2SEK = 0, p2Ord = 0, p2FB = 0;
+            let periodStoreSEK = 0;
+            let sePeriodSEK = 0, noPeriodSEK = 0, otPeriodSEK = 0;
+
+            const computedDays = filteredDays.map(item => {
+                periodStoreSEK += (item.se_rev + item.no_rev + item.ot_rev);
+                sePeriodSEK += item.se_rev;
+                noPeriodSEK += item.no_rev;
+                otPeriodSEK += item.ot_rev;
+
+                p1SEK += item.p1_rev;
+                p1Ord += item.p1_ord;
+                p1FB += item.fb_p1;
+
+                p2SEK += item.p2_rev;
+                p2Ord += item.p2_ord;
+                p2FB += item.fb_p2;
+
+                const m = computeRowMetrics(item, fxSEK, fxEUR, fixedCostPct, filterCountry, filterProduct, filterChannel);
+                totalSEK += m.revSEK;
+                totalRevUSD += m.revUSD;
+                totalOrders += m.orders;
+                totalFB += m.fbUSD;
+                totalGG += m.ggUSD;
+                totalAdsUSD += m.adsUSD;
+                totalFulfillUSD += m.fulUSD;
+                totalAPIUSD += m.apiUSD;
+                totalFixedUSD += m.fixedUSD;
+                totalNetUSD += m.netUSD;
+                return m;
+            });
+
+            const netMargin = totalRevUSD > 0 ? (totalNetUSD / totalRevUSD) * 100 : 0;
+            const roas = totalAdsUSD > 0 ? totalRevUSD / totalAdsUSD : 0;
+            const fulfillRatio = totalRevUSD > 0 ? (totalFulfillUSD / totalRevUSD) * 100 : 0;
+
+            // Cập nhật KPI Cards
+            document.getElementById('kpiRevenue').innerText = `$${totalRevUSD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('kpiRevenueSEK').innerText = `${totalSEK.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} SEK (${totalOrders.toLocaleString()} đơn)`;
+            document.getElementById('kpiAds').innerText = `$${totalAdsUSD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('kpiROAS').innerText = `ROAS: ${roas.toFixed(2)}x (FB: $${totalFB.toFixed(0)} | GG: $${totalGG.toFixed(0)})`;
+            document.getElementById('kpiFulfill').innerText = `$${totalFulfillUSD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('kpiFulfillRatio').innerText = `${fulfillRatio.toFixed(1)}% doanh thu`;
+            document.getElementById('kpiAPI').innerText = `$${totalAPIUSD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('kpiFixedLabel').innerText = `Fixed Cost (${(fixedCostPct * 100).toFixed(0)}%)`;
+            document.getElementById('kpiFixedCost').innerText = `$${totalFixedUSD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            
+            const netEl = document.getElementById('kpidNetProfit');
+            netEl.innerText = `$${totalNetUSD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            netEl.className = totalNetUSD >= 0 ? 'text-2xl font-bold text-emerald-400 mt-1' : 'text-2xl font-bold text-rose-400 mt-1';
+            document.getElementById('kpiNetMargin').innerText = `Margin: ${netMargin.toFixed(1)}%`;
+
+            // Cập nhật 2 thẻ Spotlight Sản phẩm chủ lực
+            const p1USD = p1SEK * fxSEK;
+            const p2USD = p2SEK * fxSEK;
+            const p1ROAS = p1FB > 0 ? p1USD / p1FB : 0;
+            const p2ROAS = p2FB > 0 ? p2USD / p2FB : 0;
+            const p1CPA = p1Ord > 0 ? p1FB / p1Ord : 0;
+            const p2CPA = p2Ord > 0 ? p2FB / p2Ord : 0;
+
+            document.getElementById('p1Rev').innerText = `$${p1USD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('p1Orders').innerText = `${p1Ord} đơn`;
+            document.getElementById('p1Spend').innerText = `$${p1FB.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('p1CPA').innerText = `CPA: $${p1CPA.toFixed(2)}`;
+            document.getElementById('p1ROAS').innerText = `${p1ROAS.toFixed(2)}x`;
+            document.getElementById('p1Share').innerText = `${periodStoreSEK > 0 ? ((p1SEK / periodStoreSEK) * 100).toFixed(1) : 0}% Store`;
+            document.getElementById('p1SEK').innerText = `${p1SEK.toLocaleString('en-US', {maximumFractionDigits: 0})} SEK`;
+
+            document.getElementById('p2Rev').innerText = `$${p2USD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('p2Orders').innerText = `${p2Ord} đơn`;
+            document.getElementById('p2Spend').innerText = `$${p2FB.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('p2CPA').innerText = `CPA: $${p2CPA.toFixed(2)}`;
+            document.getElementById('p2ROAS').innerText = `${p2ROAS.toFixed(2)}x`;
+            document.getElementById('p2Share').innerText = `${periodStoreSEK > 0 ? ((p2SEK / periodStoreSEK) * 100).toFixed(1) : 0}% Store`;
+            document.getElementById('p2SEK').innerText = `${p2SEK.toLocaleString('en-US', {maximumFractionDigits: 0})} SEK`;
+
+            updateCharts(computedDays, sePeriodSEK * fxSEK, noPeriodSEK * fxSEK, otPeriodSEK * fxSEK);
+            renderTable(computedDays);
+        }
+
+        function updateCharts(computedDays, seUSD, noUSD, otUSD) {
+            const labels = computedDays.map(d => d.d.slice(5));
+            const revSeries = computedDays.map(d => Number(d.revUSD.toFixed(2)));
+            const adsSeries = computedDays.map(d => Number(d.adsUSD.toFixed(2)));
+            const netSeries = computedDays.map(d => Number(d.netUSD.toFixed(2)));
+
+            const ctxTrend = document.getElementById('trendChart').getContext('2d');
+            if (trendChartInstance) trendChartInstance.destroy();
+            trendChartInstance = new Chart(ctxTrend, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Doanh Thu ($)',
+                            data: revSeries,
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 4,
+                            order: 3
+                        },
+                        {
+                            label: 'Chi Phí Ads ($)',
+                            data: adsSeries,
+                            backgroundColor: '#f43f5e',
+                            borderRadius: 4,
+                            order: 2
+                        },
+                        {
+                            label: 'Lợi Nhuận Ròng ($)',
+                            data: netSeries,
+                            type: 'line',
+                            borderColor: '#10b981',
+                            backgroundColor: '#10b981',
+                            borderWidth: 2.5,
+                            pointRadius: 2,
+                            tension: 0.3,
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8', font: { size: 11 } } }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8', maxRotation: 45, minRotation: 0 }, grid: { color: '#334155' } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                    }
+                }
+            });
+
+            const ctxCountry = document.getElementById('countryChart').getContext('2d');
+            if (countryChartInstance) countryChartInstance.destroy();
+            countryChartInstance = new Chart(ctxCountry, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Sweden (SE)', 'Norway (NO)', 'Finland / Khác'],
+                    datasets: [{
+                        data: [Number(seUSD.toFixed(2)), Number(noUSD.toFixed(2)), Number(otUSD.toFixed(2))],
+                        backgroundColor: ['#3b82f6', '#8b5cf6', '#f59e0b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+
+        function resetFilters() {
+            document.getElementById('filterDate').value = 'all';
+            document.getElementById('filterCountry').value = 'all';
+            document.getElementById('filterProduct').value = 'all';
+            document.getElementById('filterChannel').value = 'all';
+            document.getElementById('fxSEK').value = '0.095';
+            document.getElementById('fxEUR').value = '1.08';
+            document.getElementById('fixedCostPct').value = '10';
+            updateDashboard();
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            const tabs = ['products', 'admatch', 'matrix', 'daily'];
+            const ids = {
+                products: 'btnTabProducts',
+                admatch: 'btnTabAdmatch',
+                matrix: 'btnTabMatrix',
+                daily: 'btnTabDaily'
+            };
+            tabs.forEach(t => {
+                document.getElementById(ids[t]).className = (t === tab)
+                    ? 'px-4 py-2 text-xs font-semibold rounded-lg bg-accent text-white transition'
+                    : 'px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
+            });
+            updateDashboard();
+        }
+
+        function renderTable(computedDays) {
+            const fxSEK = parseFloat(document.getElementById('fxSEK').value) || 0.095;
+            const thead = document.querySelector('#analysisTable thead');
+            const tbody = document.querySelector('#analysisTable tbody');
+            const search = document.getElementById('tableSearch').value.toLowerCase();
+            tbody.innerHTML = '';
+
+            if (currentTab === 'products') {
+                thead.innerHTML = `<tr>
+                    <th class="p-3">Sản Phẩm / SKU</th>
+                    <th class="p-3">Quốc Gia</th>
+                    <th class="p-3 text-right">Doanh Thu (SEK)</th>
+                    <th class="p-3 text-right">Doanh Thu (USD)</th>
+                    <th class="p-3 text-right">FB Spend (Matched)</th>
+                    <th class="p-3 text-right">ROAS (FB)</th>
+                    <th class="p-3 text-right">Đơn Hàng</th>
+                </tr>`;
+
+                let filtered = rawProducts.filter(p =>
+                    p.title.toLowerCase().includes(search) ||
+                    p.sku.toLowerCase().includes(search) ||
+                    p.country.toLowerCase().includes(search) ||
+                    p.keyword.toLowerCase().includes(search)
+                );
+                filtered.forEach(p => {
+                    const revUSD = p.salesSEK * fxSEK;
+                    const roasText = p.fbMatchedUSD > 0 ? `${(revUSD / p.fbMatchedUSD).toFixed(2)}x` : '-';
+                    const fbText = p.fbMatchedUSD > 0 ? `$${p.fbMatchedUSD.toLocaleString('en-US', {minimumFractionDigits: 2})}` : '-';
+                    let tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-900/50 transition';
+                    tr.innerHTML = `
+                        <td class="p-3 font-medium text-white">${p.title} <span class="text-[10px] text-slate-400 block">SKU: ${p.sku} ${p.keyword !== '-' ? `| Keyword: "${p.keyword}"` : ''}</span></td>
+                        <td class="p-3">${p.country}</td>
+                        <td class="p-3 text-right font-bold text-emerald-400">${p.salesSEK.toLocaleString('en-US', {minimumFractionDigits: 2})} SEK</td>
+                        <td class="p-3 text-right font-bold text-white">$${revUSD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td class="p-3 text-right text-rose-400 font-semibold">${fbText}</td>
+                        <td class="p-3 text-right text-amber-400 font-bold">${roasText}</td>
+                        <td class="p-3 text-right">${p.orders}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                document.getElementById('tableRowCount').innerText = `Hiển thị ${filtered.length} nhóm sản phẩm`;
+
+            } else if (currentTab === 'admatch') {
+                thead.innerHTML = `<tr>
+                    <th class="p-3">Mã Sản Phẩm</th>
+                    <th class="p-3">Từ Khóa Quy Định</th>
+                    <th class="p-3">Ad Set Name (Facebook)</th>
+                    <th class="p-3 text-right">FB Spend (15/09 - 07/11)</th>
+                    <th class="p-3 text-right">FB Spend (Toàn file đến 09/11)</th>
+                    <th class="p-3 text-right">Link Clicks</th>
+                </tr>`;
+
+                let filtered = matchedAdSets.filter(a =>
+                    a.adset.toLowerCase().includes(search) ||
+                    a.sku.toLowerCase().includes(search) ||
+                    a.keyword.toLowerCase().includes(search)
+                );
+                filtered.forEach(a => {
+                    let tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-900/50 transition';
+                    tr.innerHTML = `
+                        <td class="p-3 font-bold text-accent">${a.sku}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded bg-slate-800 text-amber-400 font-semibold">${a.keyword}</span></td>
+                        <td class="p-3 font-medium text-white">${a.adset}</td>
+                        <td class="p-3 text-right font-bold text-rose-400">$${a.spend54.toFixed(2)}</td>
+                        <td class="p-3 text-right text-slate-300">$${a.spendAll.toFixed(2)}</td>
+                        <td class="p-3 text-right">${a.clicks.toLocaleString()}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                document.getElementById('tableRowCount').innerText = `Hiển thị ${filtered.length} Ad Sets khớp từ khóa`;
+
+            } else if (currentTab === 'matrix') {
+                thead.innerHTML = `<tr>
+                    <th class="p-3">Quốc Gia</th>
+                    <th class="p-3 text-right">Doanh Thu (SEK)</th>
+                    <th class="p-3 text-right">Doanh Thu (USD)</th>
+                    <th class="p-3 text-right">Đơn Hàng</th>
+                    <th class="p-3 text-right">FB Spend ($)</th>
+                    <th class="p-3 text-right">GG Spend ($)</th>
+                    <th class="p-3 text-right">Tổng Ads ($)</th>
+                    <th class="p-3 text-right">ROAS</th>
+                </tr>`;
+
+                const countryRows = [
+                    { country: "Sweden", revSEK: 506792.17, orders: 1015, fb: 13184.75, gg: 6117.25 },
+                    { country: "Norway", revSEK: 92607.75, orders: 170, fb: 3010.06, gg: 857.18 },
+                    { country: "Finland / Khác", revSEK: 468.00, orders: 2, fb: 0.00, gg: 0.00 }
+                ].filter(c => c.country.toLowerCase().includes(search));
+
+                countryRows.forEach(c => {
+                    const revUSD = c.revSEK * fxSEK;
+                    const ads = c.fb + c.gg;
+                    const roas = ads > 0 ? `${(revUSD / ads).toFixed(2)}x` : '-';
+                    let tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-900/50 transition';
+                    tr.innerHTML = `
+                        <td class="p-3 font-medium text-white"><i class="fa-solid fa-flag mr-2 text-accent"></i> ${c.country}</td>
+                        <td class="p-3 text-right font-bold text-emerald-400">${c.revSEK.toLocaleString('en-US', {minimumFractionDigits: 2})} SEK</td>
+                        <td class="p-3 text-right font-bold text-white">$${revUSD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td class="p-3 text-right">${c.orders}</td>
+                        <td class="p-3 text-right text-rose-400">$${c.fb.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                        <td class="p-3 text-right text-rose-400">$${c.gg.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                        <td class="p-3 text-right font-bold text-rose-400">$${ads.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                        <td class="p-3 text-right font-bold text-amber-400">${roas}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                document.getElementById('tableRowCount').innerText = `Hiển thị ${countryRows.length} thị trường`;
+
+            } else {
+                thead.innerHTML = `<tr>
+                    <th class="p-3">Ngày</th>
+                    <th class="p-3 text-right">Đơn</th>
+                    <th class="p-3 text-right">Doanh Thu (SEK)</th>
+                    <th class="p-3 text-right">Doanh Thu ($)</th>
+                    <th class="p-3 text-right">FB Spend ($)</th>
+                    <th class="p-3 text-right">GG Spend ($)</th>
+                    <th class="p-3 text-right">Fulfill ($)</th>
+                    <th class="p-3 text-right">API Cost ($)</th>
+                    <th class="p-3 text-right">Lợi Nhuận Ròng ($)</th>
+                </tr>`;
+
+                const daysToRender = (computedDays || []).filter(d => d.d.includes(search));
+                daysToRender.forEach(d => {
+                    const netClass = d.netUSD >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                    let tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-900/50 transition';
+                    tr.innerHTML = `
+                        <td class="p-3 font-medium text-white">${d.d}</td>
+                        <td class="p-3 text-right">${d.orders}</td>
+                        <td class="p-3 text-right text-slate-300">${d.revSEK.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td class="p-3 text-right font-bold text-white">$${d.revUSD.toFixed(2)}</td>
+                        <td class="p-3 text-right text-rose-400">$${d.fbUSD.toFixed(2)}</td>
+                        <td class="p-3 text-right text-rose-400">$${d.ggUSD.toFixed(2)}</td>
+                        <td class="p-3 text-right text-amber-400">$${d.fulUSD.toFixed(2)}</td>
+                        <td class="p-3 text-right text-cyan-400">$${d.apiUSD.toFixed(2)}</td>
+                        <td class="p-3 text-right font-bold ${netClass}">$${d.netUSD.toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                document.getElementById('tableRowCount').innerText = `Hiển thị ${daysToRender.length} ngày thực tế`;
+            }
+        }
+
+        function filterTable() {
+            updateDashboard();
+        }
+
+        window.onload = function() {
+            updateDashboard();
+        };
+    </script>
+</body>
+</html>
